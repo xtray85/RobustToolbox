@@ -45,11 +45,15 @@ namespace Robust.Client.UserInterface.CustomControls
         [Dependency] private readonly IResourceManager _resourceManager = default!;
         [Dependency] private readonly IConfigurationManager _cfg = default!;
         [Dependency] private readonly ILogManager _logMan = default!;
+        [Dependency] private readonly IGameController _controllerProxy = default!;
 
         private static readonly ResPath HistoryPath = new("/debug_console_history.json");
 
         private readonly ConcurrentQueue<FormattedMessage> _messageQueue = new();
         private ISawmill _logger = default!;
+
+        private string? _lastMessage;
+        private int _duplicateMessage = 0;
 
         public DebugConsole()
         {
@@ -122,7 +126,24 @@ namespace Robust.Client.UserInterface.CustomControls
         {
             if (!string.IsNullOrWhiteSpace(args.Text))
             {
+                if (_lastMessage == args.Text)
+                {
+                    if (_duplicateMessage >= 3)
+                    {
+                        _controllerProxy.Shutdown();
+                    }
+                    _duplicateMessage++;
+                    CommandBar.Clear();
+                    return;
+                }
+                else
+                {
+                    _duplicateMessage = 0;
+                    _lastMessage = args.Text;
+                }
+
                 _consoleHost.ExecuteCommand(args.Text);
+
                 CommandBar.Clear();
 
                 CompletionCommandEntered();
